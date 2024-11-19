@@ -99,6 +99,66 @@ form label textarea:focus {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+.recipe {
+    display: grid;
+    /* Use grid layout to organize content */
+    grid-template-columns: 1fr 2fr;
+    /* Two columns: 1 for image, 1 for text */
+    gap: 15px;
+    /* Space between columns and rows */
+    padding: 15px;
+    /* Inner padding for the recipe box */
+    margin-bottom: 20px;
+    /* Space between recipes */
+    border: 1px solid #ccc;
+    /* Light border around each recipe */
+    border-radius: 8px;
+    /* Rounded corners */
+    background-color: #f9f9f9;
+    /* Light background color */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    /* Subtle shadow for depth */
+}
+
+/* Styling for the image */
+.recipe img {
+    width: 100%;
+    /* Ensure the image fills its column */
+    height: auto;
+    /* Maintain aspect ratio */
+    border-radius: 5px;
+    /* Rounded corners for the image */
+    object-fit: cover;
+    /* Ensures the image is nicely cropped */
+}
+
+/* Styling for the text content */
+.recipe div {
+    display: flex;
+    flex-direction: column;
+    /* Stack name, ingredients, and steps */
+    justify-content: space-between;
+}
+
+/* Recipe title styling */
+.recipe h3 {
+    margin: 0 0 10px 0;
+    /* Remove top margin, add spacing below */
+    font-size: 1.5em;
+    color: #333;
+    /* Darker color for better contrast */
+}
+
+/* Ingredients and steps */
+.recipe p {
+    margin: 5px 0;
+    /* Space out paragraphs slightly */
+    line-height: 1.5;
+    /* Improve readability */
+    color: #555;
+    /* Slightly lighter text color */
+}
+
 /* Responsive Design */
 @media (max-width: 600px) {
     #header {
@@ -108,5 +168,15 @@ form label textarea:focus {
 
     #submit {
         font-size: 0.9em;
+    }
+
+    .recipe {
+        grid-template-columns: 1fr;
+        /* Stack image and text vertically */
+    }
+
+    .recipe img {
+        margin-bottom: 15px;
+        /* Add space below the image when stacked */
     }
 }
