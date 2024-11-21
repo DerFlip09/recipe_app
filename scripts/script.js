@@ -8,7 +8,11 @@ let displayArea = document.querySelector(".recipeList");
 
 let recipeIdForEdit = null;  // Will store the ID of the recipe being edited
 
-
+/**
+ * Fetches the list of recipes from the API.
+ * 
+ * @returns {Promise<Array>} A promise that resolves to the list of recipes.
+ */
 async function fetchRecipes() {
     try {
         const response = await fetch("http://localhost:8000/recipes");
@@ -20,13 +24,16 @@ async function fetchRecipes() {
     }
 }
 
+/**
+ * Initializes the application by fetching and displaying recipes.
+ */
 async function init() {
     const recipes = await fetchRecipes();
     recipes.forEach((recipe, index) => displayRecipe(recipe, index));
 }
 
 /**
- * Clears the input fields after submitting a recipe.
+ * Clears the input fields after submitting or cancelling a recipe.
  */
 function cleanInputFields() {
     recipeName.value = "";
@@ -41,7 +48,6 @@ function cleanInputFields() {
  * @param {object} recipe - The recipe object to display.
  * @param {number} index - The index of the recipe in the recipes array.
  */
-
 function displayRecipe(recipe, index) {
     // Create a div to hold the recipe's content
     let recipeDiv = document.createElement("div");
@@ -69,7 +75,7 @@ function displayRecipe(recipe, index) {
     stepsElement.innerHTML = `<strong>Steps:</strong> ${recipe.steps}`;
     recipeDiv.appendChild(stepsElement);
 
-    // edit button to edit one recipe
+    // Edit button to edit one recipe
     let editButton = document.createElement("button");
     editButton.textContent = "Edit";
     editButton.onclick = function () {
@@ -89,7 +95,12 @@ function displayRecipe(recipe, index) {
     displayArea.appendChild(recipeDiv);
 }
 
-// Function to send a new recipe to the API
+/**
+ * Sends a new recipe to the API via a POST request.
+ * 
+ * @param {object} recipe - The recipe object to send.
+ * @returns {Promise<object>} The created recipe object returned by the API.
+ */
 async function postRecipeToAPI(recipe) {
     try {
         const response = await fetch("http://localhost:8000/recipes", {
@@ -111,16 +122,21 @@ async function postRecipeToAPI(recipe) {
     }
 }
 
+/**
+ * Handles the recipe submission form by either adding a new recipe or updating an existing one.
+ * 
+ * @param {Event} event - The submit event of the recipe form.
+ */
 async function addRecipe(event) {
     event.preventDefault();
 
-
+    // Retrieve values entered in the form
     const enteredRecipeName = recipeName.value;
     const enteredIngredients = ingredients.value;
     const enteredSteps = steps.value;
     const enteredImageUrl = imageUrl.value;
 
-
+    // Create a new or updated recipe object
     const updatedRecipe = {
         name: enteredRecipeName,
         ingredients: enteredIngredients,
@@ -130,11 +146,14 @@ async function addRecipe(event) {
 
     try {
         if (recipeIdForEdit) {
+            // Update an existing recipe if in edit mode
             await updateRecipeOnAPI(recipeIdForEdit, updatedRecipe);
         } else {
+            // Add a new recipe to the backend
             await postRecipeToAPI(updatedRecipe);
         }
 
+        // Clear the input fields and reset the editing state
         cleanInputFields();
         recipeIdForEdit = null;
     } catch (error) {
@@ -142,7 +161,11 @@ async function addRecipe(event) {
     }
 }
 
-// Function to send a DELETE request to the API
+/**
+ * Sends a DELETE request to the API to remove a recipe.
+ * 
+ * @param {number} recipeId - The ID of the recipe to delete.
+ */
 async function deleteRecipeFromAPI(recipeId) {
     try {
         const response = await fetch(`http://localhost:8000/recipes/${recipeId}`, {
@@ -161,7 +184,12 @@ async function deleteRecipeFromAPI(recipeId) {
     }
 }
 
-// Function to handle delete button click
+/**
+ * Handles the click on the delete button to remove the recipe both from the UI and the API.
+ * 
+ * @param {number} index - The index of the recipe in the display area.
+ * @param {number} recipeId - The ID of the recipe to delete.
+ */
 async function handleDeleteRecipe(index, recipeId) {
     try {
         // Send the delete request to the backend
@@ -177,15 +205,26 @@ async function handleDeleteRecipe(index, recipeId) {
     }
 }
 
+/**
+ * Populates the form with the recipe data for editing.
+ * 
+ * @param {object} recipe - The recipe to edit.
+ */
 function populateEditForm(recipe) {
     recipeName.value = recipe.name;
     ingredients.value = recipe.ingredients;
     steps.value = recipe.steps;
     imageUrl.value = recipe.imageUrl;
 
-    recipeIdForEdit = recipe.id;
+    recipeIdForEdit = recipe.id; // Set the ID of the recipe being edited
 }
 
+/**
+ * Sends a PUT request to the API to update an existing recipe.
+ * 
+ * @param {number} recipeId - The ID of the recipe to update.
+ * @param {object} updatedRecipe - The updated recipe data.
+ */
 async function updateRecipeOnAPI(recipeId, updatedRecipe) {
     try {
         const response = await fetch(`http://localhost:8000/recipes/${recipeId}`, {
@@ -203,12 +242,19 @@ async function updateRecipeOnAPI(recipeId, updatedRecipe) {
         const updatedRecipeResponse = await response.json();
         console.log("Updated recipe:", updatedRecipeResponse);
 
+        // Update the recipe in the UI after successful API update
         updateRecipeInUI(recipeId, updatedRecipeResponse);
     } catch (error) {
         console.error("Error updating recipe:", error);
     }
 }
 
+/**
+ * Updates the recipe display in the UI with the updated data.
+ * 
+ * @param {number} recipeId - The ID of the recipe to update.
+ * @param {object} updatedRecipe - The updated recipe data.
+ */
 function updateRecipeInUI(recipeId, updatedRecipe) {
     const recipeDivs = displayArea.querySelectorAll('.recipe');
     const recipeDiv = Array.from(recipeDivs).find(div => {
@@ -223,5 +269,6 @@ function updateRecipeInUI(recipeId, updatedRecipe) {
     }
 }
 
+// Attach event listeners
 recipeForm.addEventListener("submit", addRecipe);
 window.addEventListener("load", init);
