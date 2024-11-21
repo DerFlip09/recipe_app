@@ -6,15 +6,23 @@ let steps = document.getElementById("preparationList");
 let imageUrl = document.getElementById("imageUrl");
 let displayArea = document.querySelector(".recipeList");
 
-// Initialize an array to store the recipes
-let recipes = [];
+let recipeIdForEdit = null;  // Will store the ID of the recipe being edited
 
-// Retrieve recipes from localStorage if available
-if (localStorage.getItem("recipes")) {
-    recipes = JSON.parse(localStorage.getItem("recipes"));
-    recipes.forEach((recipe, index) => {
-        displayRecipe(recipe, index);  // Display each recipe from localStorage
-    });
+
+async function fetchRecipes() {
+    try {
+        const response = await fetch("http://localhost:8000/recipes");
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching recipes:", error);
+        return [];
+    }
+}
+
+async function init() {
+    const recipes = await fetchRecipes();
+    recipes.forEach((recipe, index) => displayRecipe(recipe, index));
 }
 
 /**
@@ -28,28 +36,12 @@ function cleanInputFields() {
 }
 
 /**
- * Deletes a recipe from the list and updates localStorage.
- * 
- * @param {number} index - The index of the recipe to delete.
- */
-function deleteRecipe(index) {
-    // Remove the recipe from the array
-    recipes.splice(index, 1);
-    // Update the recipes in localStorage
-    localStorage.setItem('recipes', JSON.stringify(recipes));
-    // Re-render the recipe list
-    displayArea.innerHTML = "";
-    recipes.forEach((recipe, index) => {
-        displayRecipe(recipe, index);
-    });
-}
-
-/**
  * Displays a recipe on the page.
  * 
  * @param {object} recipe - The recipe object to display.
  * @param {number} index - The index of the recipe in the recipes array.
  */
+
 function displayRecipe(recipe, index) {
     // Create a div to hold the recipe's content
     let recipeDiv = document.createElement("div");
@@ -77,11 +69,19 @@ function displayRecipe(recipe, index) {
     stepsElement.innerHTML = `<strong>Steps:</strong> ${recipe.steps}`;
     recipeDiv.appendChild(stepsElement);
 
+    // edit button to edit one recipe
+    let editButton = document.createElement("button");
+    editButton.textContent = "Edit";
+    editButton.onclick = function () {
+        populateEditForm(recipe);  // Call function to populate form
+    };
+    recipeDiv.appendChild(editButton);
+
     // Add delete button to remove recipe
     let deleteButton = document.createElement('button');
     deleteButton.textContent = "Delete";
     deleteButton.onclick = function () {
-        deleteRecipe(index);  // Call delete function on click
+        handleDeleteRecipe(index, recipe.id);  // Call delete function on click
     };
     recipeDiv.appendChild(deleteButton);
 
@@ -89,28 +89,139 @@ function displayRecipe(recipe, index) {
     displayArea.appendChild(recipeDiv);
 }
 
-// Listen for form submissions to add a new recipe
-recipeForm.addEventListener('submit', function (event) {
-    event.preventDefault();  // Prevent page reload
+// Function to send a new recipe to the API
+async function postRecipeToAPI(recipe) {
+    try {
+        const response = await fetch("http://localhost:8000/recipes", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(recipe)
+        });
 
-    // Get the values entered by the user
-    let enteredRecipeName = recipeName.value;
-    let enteredIngredients = ingredients.value;
-    let enteredSteps = steps.value;
-    let enteredImageUrl = imageUrl.value;
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
 
-    // Create a new recipe object
-    let newRecipe = {
+        return await response.json(); // Return the created recipe
+    } catch (error) {
+        console.error("Error posting recipe:", error);
+        throw error; // Re-throw error for handling in the calling function
+    }
+}
+
+async function addRecipe(event) {
+    event.preventDefault();
+
+
+    const enteredRecipeName = recipeName.value;
+    const enteredIngredients = ingredients.value;
+    const enteredSteps = steps.value;
+    const enteredImageUrl = imageUrl.value;
+
+
+    const updatedRecipe = {
         name: enteredRecipeName,
         ingredients: enteredIngredients,
         steps: enteredSteps,
         imageUrl: enteredImageUrl
     };
 
-    // Add the new recipe to the array and update localStorage
-    recipes.push(newRecipe);
-    let index = recipes.length - 1;  // Get the index of the newly added recipe
-    displayRecipe(newRecipe, index);  // Display the new recipe
-    localStorage.setItem('recipes', JSON.stringify(recipes));  // Update localStorage
-    cleanInputFields();  // Clear input fields
-});
+    try {
+        if (recipeIdForEdit) {
+            await updateRecipeOnAPI(recipeIdForEdit, updatedRecipe);
+        } else {
+            await postRecipeToAPI(updatedRecipe);
+        }
+
+        cleanInputFields();
+        recipeIdForEdit = null;
+    } catch (error) {
+        console.error("Failed to add or update recipe:", error);
+    }
+}
+
+// Function to send a DELETE request to the API
+async function deleteRecipeFromAPI(recipeId) {
+    try {
+        const response = await fetch(`http://localhost:8000/recipes/${recipeId}`, {
+            method: "DELETE"
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        // Return the response data
+        const result = await response.json();
+        console.log(result.message); // Optionally log the success message
+    } catch (error) {
+        console.error("Error deleting recipe:", error);
+    }
+}
+
+// Function to handle delete button click
+async function handleDeleteRecipe(index, recipeId) {
+    try {
+        // Send the delete request to the backend
+        await deleteRecipeFromAPI(recipeId);
+
+        // Remove the recipe from the display
+        const recipeDivs = displayArea.querySelectorAll('.recipe');
+        if (recipeDivs[index]) {
+            recipeDivs[index].remove();
+        }
+    } catch (error) {
+        console.error("Failed to delete recipe:", error);
+    }
+}
+
+function populateEditForm(recipe) {
+    recipeName.value = recipe.name;
+    ingredients.value = recipe.ingredients;
+    steps.value = recipe.steps;
+    imageUrl.value = recipe.imageUrl;
+
+    recipeIdForEdit = recipe.id;
+}
+
+async function updateRecipeOnAPI(recipeId, updatedRecipe) {
+    try {
+        const response = await fetch(`http://localhost:8000/recipes/${recipeId}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(updatedRecipe)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const updatedRecipeResponse = await response.json();
+        console.log("Updated recipe:", updatedRecipeResponse);
+
+        updateRecipeInUI(recipeId, updatedRecipeResponse);
+    } catch (error) {
+        console.error("Error updating recipe:", error);
+    }
+}
+
+function updateRecipeInUI(recipeId, updatedRecipe) {
+    const recipeDivs = displayArea.querySelectorAll('.recipe');
+    const recipeDiv = Array.from(recipeDivs).find(div => {
+        return div.querySelector('h3').innerText === updatedRecipe.name;
+    });
+
+    if (recipeDiv) {
+        recipeDiv.querySelector('h3').innerText = updatedRecipe.name;
+        recipeDiv.querySelector('p').innerHTML = `<strong>Ingredients:</strong> ${updatedRecipe.ingredients.split(', ').join(', ')}`;
+        recipeDiv.querySelectorAll('p')[1].innerHTML = `<strong>Steps:</strong> ${updatedRecipe.steps}`;
+        recipeDiv.querySelector('img').src = updatedRecipe.imageUrl;
+    }
+}
+
+recipeForm.addEventListener("submit", addRecipe);
+window.addEventListener("load", init);
